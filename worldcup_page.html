@@ -1,0 +1,94 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>월드컵 투표</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f0f8ff; text-align: center; }
+    header { background: #ffffff; padding: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .match-container { display: flex; justify-content: space-around; align-items: center; margin: 20px 10px; }
+    .candidate { width: 45%; background: #ffffff; border-radius: 10px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
+    .profile-pic { width: 80px; height: 80px; border-radius: 50%; background: #ddd; margin: 10px auto; }
+    .progress { margin: 10px; color: #00796b; font-weight: bold; }
+  </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEB8oMfBuaPpIKAXIBCBRf1k22JTAAY1E",
+      authDomain: "classpick-5e62c.firebaseapp.com",
+      projectId: "classpick-5e62c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+</head>
+<body>
+  <header>월드컵 투표</header>
+  <div class="progress" id="roundInfo">Round 1</div>
+  <div class="match-container" id="matchContainer">불러오는 중...</div>
+
+  <script>
+    let candidates = [];
+    let currentRound = 1;
+    let currentIndex = 0;
+    let winners = [];
+
+    db.collection("users").get().then(snapshot => {
+      candidates = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+      shuffle(candidates);
+      showMatch();
+    });
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function showMatch() {
+      if (currentIndex >= candidates.length) {
+        if (candidates.length === 1) {
+          document.getElementById("matchContainer").innerHTML = `<h2>우승자: ${candidates[0].name}</h2>`;
+          return;
+        }
+        candidates = winners;
+        winners = [];
+        currentIndex = 0;
+        currentRound++;
+        document.getElementById("roundInfo").innerText = "Round " + currentRound;
+      }
+
+      const c1 = candidates[currentIndex];
+      const c2 = candidates[currentIndex + 1];
+      if (!c2) {
+        winners.push(c1);
+        currentIndex += 2;
+        showMatch();
+        return;
+      }
+
+      document.getElementById("matchContainer").innerHTML = `
+        <div class="candidate" onclick="selectWinner(${currentIndex}, true)">
+          <div class="profile-pic"></div>
+          <div>${c1.name}</div>
+        </div>
+        <div class="candidate" onclick="selectWinner(${currentIndex}, false)">
+          <div class="profile-pic"></div>
+          <div>${c2.name}</div>
+        </div>
+      `;
+    }
+
+    function selectWinner(index, leftWin) {
+      winners.push(leftWin ? candidates[index] : candidates[index + 1]);
+      currentIndex += 2;
+      showMatch();
+    }
+  </script>
+</body>
+</html>

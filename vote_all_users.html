@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>실시간 투표</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f9f9f9; }
+    header { background: #ffffff; padding: 10px; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .candidate-list { padding: 10px; }
+    .candidate-card { background: #ffffff; border-radius: 10px; padding: 10px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; }
+    .profile-pic { width: 60px; height: 60px; border-radius: 50%; background: #ddd; margin-right: 10px; }
+    .info { flex-grow: 1; text-align: left; }
+    .info h4 { margin: 5px 0; }
+    .vote-btn { background: #e91e63; color: white; padding: 8px 12px; border: none; border-radius: 5px; font-size: 14px; }
+  </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEB8oMfBuaPpIKAXIBCBRf1k22JTAAY1E",
+      authDomain: "classpick-5e62c.firebaseapp.com",
+      projectId: "classpick-5e62c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
+</head>
+<body>
+  <header>실시간 투표</header>
+  <div class="candidate-list" id="candidateList">불러오는 중...</div>
+
+  <script>
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        alert("로그인이 필요합니다.");
+        window.location.href = "signup_completed.html";
+      } else {
+        loadCandidates(user.uid);
+      }
+    });
+
+    function loadCandidates(userId) {
+      db.collection("users").get().then(snapshot => {
+        let html = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          html += `
+            <div class="candidate-card">
+              <div class="profile-pic"></div>
+              <div class="info">
+                <h4>${data.name}</h4>
+                <p>매력 키워드: ${data.keyword || "알 수 없음"}</p>
+              </div>
+              <button class="vote-btn" onclick="vote('${userId}', '${doc.id}', '${data.name}')">투표</button>
+            </div>
+          `;
+        });
+        document.getElementById("candidateList").innerHTML = html;
+      });
+    }
+
+    function vote(userId, candidateId, name) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
+
+      db.collection("votes")
+        .where("voterId", "==", userId)
+        .where("candidateId", "==", candidateId)
+        .where("time", ">=", todayTimestamp)
+        .get()
+        .then(snapshot => {
+          if (!snapshot.empty) {
+            alert("오늘 이미 투표했습니다.");
+          } else {
+            db.collection("votes").add({
+              voterId: userId,
+              candidateId: candidateId,
+              time: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => alert(name + "님에게 투표 완료!"));
+          }
+        });
+    }
+  </script>
+</body>
+</html>
